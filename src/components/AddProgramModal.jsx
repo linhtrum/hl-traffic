@@ -88,7 +88,7 @@ function AddProgramModal({ isOpen, onClose, onSubmit, programNumber, initialData
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Program ${programNumber}`}>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Total Period (seconds)</label>
                     <div className="mt-1">
@@ -101,10 +101,10 @@ function AddProgramModal({ isOpen, onClose, onSubmit, programNumber, initialData
                     </div>
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-2">
                     {[1, 2, 3].map(phaseNumber => (
-                        <div key={phaseNumber} className="rounded-lg bg-gray-50 p-4">
-                            <h3 className="mb-4 text-base font-medium text-gray-900">Phase {phaseNumber}</h3>
+                        <div key={phaseNumber} className="rounded-lg bg-gray-50 p-2">
+                            <h3 className="mb-2 text-base font-medium text-gray-900">Phase {phaseNumber}</h3>
                             {renderPhaseInputs(phaseNumber)}
                         </div>
                     ))}

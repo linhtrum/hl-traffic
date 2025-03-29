@@ -96,6 +96,8 @@ function Device({ deviceId }) {
         const location = getDeviceLocation();
         setDeviceLocation(location);
     }, [serverAttributes]);
+    // console.log(serverAttributes);
+    // console.log(deviceLocation);
 
     useEffect(() => {
         const fetchDevice = async () => {
@@ -111,6 +113,7 @@ function Device({ deviceId }) {
 
         fetchDevice();
     }, [deviceId]);
+    // console.log(deviceLocation);
 
     useEffect(() => {
         const fetchAttributes = async () => {
@@ -337,7 +340,7 @@ function Device({ deviceId }) {
                     value={telemetry?.data?.[`T_D${phaseNumber}`]?.[0]?.[1] ||
                         telemetry?.data?.[`T_X${phaseNumber}`]?.[0]?.[1] || 0}
                     isActive={true}
-                    size={100}
+                    size={60}
                 />
             </div>
             <div className="mb-2 text-lg font-semibold">Phase {phaseNumber}</div>
@@ -467,9 +470,9 @@ function Device({ deviceId }) {
         <div className="px-6 py-2">
             <div className="mb-6 flex items-center justify-between">
                 <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-500">{device?.label || 'No Label'}</div>
+                    <div className="text-sm font-medium text-gray-500">{device?.name || 'No Label'}</div>
                     <div className="flex items-center gap-3">
-                        <div className="text-2xl font-semibold text-gray-900">{device?.name || 'Device Details'}</div>
+                        <div className="text-2xl font-semibold text-gray-900">{device?.label || 'Device Details'}</div>
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${device?.active
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
@@ -483,40 +486,48 @@ function Device({ deviceId }) {
 
             {/* Traffic Light Control Panel */}
             <div className="mb-6 flex">
-                <PlanConfigSection />
-                <TrafficLightSection />
-                <ProgramConfigSection />
+                {/* Maps Panel */}
+                <section className="w-[50%] rounded-lg bg-white p-4 shadow-sm">
+                    <div className="relative z-20 h-full w-full rounded-lg overflow-hidden">
+                        <MapContainer
+                            center={[10.762622, 106.660172]} // Default center
+                            zoom={13}
+                            style={{ height: '100%', width: '100%' }}
+                        >
+                            <MapController location={deviceLocation} />
+                            <TileLayer
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            />
+                            {deviceLocation && (
+                                <Marker position={[deviceLocation.latitude, deviceLocation.longitude]}>
+                                    <Popup>
+                                        <div className="font-medium">{device?.label || 'Device Location'}</div>
+                                        <div className="text-sm text-gray-600">{device?.name}</div>
+                                    </Popup>
+                                </Marker>
+                            )}
+                        </MapContainer>
+                    </div>
+                </section>
+
+                {/* Control Panel */}
+                <div className="ml-4 flex w-[50%]">
+                    <PlanConfigSection />
+                    <TrafficLightSection />
+                    <ProgramConfigSection />
+                </div>
             </div>
 
             {/* Device Information Section */}
             {device && (
-                <div className="mb-6 grid grid-cols-2 gap-6">
-                    {/* Device Information Panel */}
-                    <section className="rounded-lg bg-white p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-medium">Device Information</h2>
-                            <button
-                                onClick={() => setShowLocationModal(true)}
-                                className="rounded-lg p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                title="Set device location"
-                            >
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                            </button>
-                        </div>
-                        <div className="space-y-4">
-                            <div>
-                                <p className="text-sm text-gray-600">Name</p>
-                                <p className="font-medium">{device.name}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Label</p>
-                                <p className="font-medium">{device.label ? device.label : 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Status</p>
+                <div className="mb-6">
+                    {/* Status Cards */}
+                    <div className="grid grid-cols-4 gap-4">
+                        {/* Status Card */}
+                        <div className="rounded-lg bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-medium text-gray-600">Device Status</h3>
                                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${device.active
                                     ? 'bg-green-100 text-green-800'
                                     : 'bg-red-100 text-red-800'
@@ -524,57 +535,74 @@ function Device({ deviceId }) {
                                     {device.active ? 'Active' : 'Inactive'}
                                 </span>
                             </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Last Active Time</p>
-                                <p className="font-medium">
-                                    {getServerAttributeValue('lastActivityTime')
-                                        ? new Date(getServerAttributeValue('lastActivityTime')).toLocaleString()
-                                        : 'Never'}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Last Connection</p>
-                                <p className="font-medium">
-                                    {getServerAttributeValue('lastConnectTime')
-                                        ? new Date(getServerAttributeValue('lastConnectTime')).toLocaleString()
-                                        : 'Never'}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Last Disconnection</p>
-                                <p className="font-medium">
-                                    {getServerAttributeValue('lastDisconnectTime')
-                                        ? new Date(getServerAttributeValue('lastDisconnectTime')).toLocaleString()
-                                        : 'Never'}
-                                </p>
+                            <div className="space-y-2">
+                                <div>
+                                    <p className="text-sm text-gray-600">Name</p>
+                                    <p className="font-medium">{device.name}</p>
+                                </div>
+                                <div>
+                                    <p className="text-sm text-gray-600">Label</p>
+                                    <p className="font-medium">{device.label ? device.label : 'N/A'}</p>
+                                </div>
+                                <button
+                                    onClick={() => setShowLocationModal(true)}
+                                    className="mt-2 flex w-full items-center justify-center rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                    title="Set device location"
+                                >
+                                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Set Location
+                                </button>
                             </div>
                         </div>
-                    </section>
 
-                    {/* Maps Panel */}
-                    <section className="rounded-lg bg-white p-6 shadow-sm">
-                        <div className="relative z-20 h-[400px] w-full rounded-lg overflow-hidden">
-                            <MapContainer
-                                center={[10.762622, 106.660172]} // Default center
-                                zoom={13}
-                                style={{ height: '100%', width: '100%' }}
-                            >
-                                <MapController location={deviceLocation} />
-                                <TileLayer
-                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                                />
-                                {deviceLocation && (
-                                    <Marker position={[deviceLocation.latitude, deviceLocation.longitude]}>
-                                        <Popup>
-                                            <div className="font-medium">{device?.label || 'Device Location'}</div>
-                                            <div className="text-sm text-gray-600">{device?.name}</div>
-                                        </Popup>
-                                    </Marker>
-                                )}
-                            </MapContainer>
+                        {/* Last Active Time Card */}
+                        <div className="rounded-lg bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium text-gray-600">Last Active Time</div>
+                                <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div className="mt-1 text-sm text-gray-900">
+                                {getServerAttributeValue('lastActivityTime')
+                                    ? new Date(getServerAttributeValue('lastActivityTime')).toLocaleString()
+                                    : 'Never'}
+                            </div>
                         </div>
-                    </section>
+
+                        {/* Last Connection Card */}
+                        <div className="rounded-lg bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium text-gray-600">Last Connection</div>
+                                <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            </div>
+                            <div className="mt-1 text-sm text-gray-900">
+                                {getServerAttributeValue('lastConnectTime')
+                                    ? new Date(getServerAttributeValue('lastConnectTime')).toLocaleString()
+                                    : 'Never'}
+                            </div>
+                        </div>
+
+                        {/* Last Disconnection Card */}
+                        <div className="rounded-lg bg-white p-4 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div className="text-sm font-medium text-gray-600">Last Disconnection</div>
+                                <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                            </div>
+                            <div className="mt-1 text-sm text-gray-900">
+                                {getServerAttributeValue('lastDisconnectTime')
+                                    ? new Date(getServerAttributeValue('lastDisconnectTime')).toLocaleString()
+                                    : 'Never'}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 

@@ -11,8 +11,8 @@ function SetLocationModal({ isOpen, onClose, onSubmit, initialLocation }) {
     useEffect(() => {
         if (initialLocation) {
             setLocation({
-                latitude: initialLocation.latitude.toString(),
-                longitude: initialLocation.longitude.toString()
+                latitude: initialLocation.latitude,
+                longitude: initialLocation.longitude
             });
         }
     }, [initialLocation]);
@@ -20,11 +20,11 @@ function SetLocationModal({ isOpen, onClose, onSubmit, initialLocation }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         // Convert to double precision
-        const doubleLocation = {
-            latitude: parseFloat(location.latitude),
-            longitude: parseFloat(location.longitude)
-        };
-        onSubmit(doubleLocation);
+        // const doubleLocation = {
+        //     latitude: parseFloat(location.latitude),
+        //     longitude: parseFloat(location.longitude)
+        // };
+        onSubmit(location);
         onClose();
     };
 
@@ -42,7 +42,7 @@ function SetLocationModal({ isOpen, onClose, onSubmit, initialLocation }) {
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Latitude</label>
                     <input
-                        type="text"
+                        type="number"
                         value={location.latitude}
                         onChange={(e) => handleInputChange(e, 'latitude')}
                         className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -55,7 +55,7 @@ function SetLocationModal({ isOpen, onClose, onSubmit, initialLocation }) {
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Longitude</label>
                     <input
-                        type="text"
+                        type="number"
                         value={location.longitude}
                         onChange={(e) => handleInputChange(e, 'longitude')}
                         className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"

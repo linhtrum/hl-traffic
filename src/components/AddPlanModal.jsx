@@ -45,7 +45,7 @@ function AddPlanModal({ isOpen, onClose, onSubmit, planNumber, initialData }) {
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Plan ${planNumber}`}>
             <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-4">
+                <div className="space-y-2">
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Hour</label>
                         <div className="mt-1">

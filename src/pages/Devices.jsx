@@ -17,6 +17,7 @@ function Device() {
     const [editingDevice, setEditingDevice] = useState(null);
     const [totalElements, setTotalElements] = useState(0);
     const [hasNext, setHasNext] = useState(false);
+    const [filteredDevices, setFilteredDevices] = useState([]);
     const [newDevice, setNewDevice] = useState({
         name: '',
         label: '',
@@ -45,6 +46,21 @@ function Device() {
     useEffect(() => {
         fetchDevices();
     }, [page, pageSize, sortProperty, sortOrder]);
+
+    // Add new useEffect for search filtering
+    useEffect(() => {
+        if (!searchTerm.trim()) {
+            setFilteredDevices(devices);
+            return;
+        }
+
+        const searchLower = searchTerm.toLowerCase();
+        const filtered = devices.filter(device =>
+            device.name.toLowerCase().includes(searchLower) ||
+            (device.label && device.label.toLowerCase().includes(searchLower))
+        );
+        setFilteredDevices(filtered);
+    }, [searchTerm, devices]);
 
     useEffect(() => {
         if (successMessage) {
@@ -86,6 +102,12 @@ function Device() {
 
     const handleSearch = (e) => {
         setSearchTerm(e.target.value);
+        // Reset to first page when searching
+        setSearchParams(prev => {
+            const newParams = new URLSearchParams(prev);
+            newParams.set('page', '0');
+            return newParams;
+        });
     };
 
     const handleAddDevice = async () => {
@@ -360,13 +382,53 @@ function Device() {
                 <p className="mt-1 text-sm text-gray-500">Manage your connected devices</p>
             </header>
 
+            {/* Device Statistics Cards */}
+            <div className="mb-8 grid grid-cols-3 gap-4">
+                {/* Total Devices Card */}
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-600">Total Devices</div>
+                        <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                        </svg>
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-gray-900">{totalElements}</div>
+                </div>
+
+                {/* Active Devices Card */}
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-600">Active Devices</div>
+                        <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-gray-900">
+                        {devices.filter(device => device.active).length}
+                    </div>
+                </div>
+
+                {/* Inactive Devices Card */}
+                <div className="rounded-lg bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium text-gray-600">Inactive Devices</div>
+                        <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-gray-900">
+                        {devices.filter(device => !device.active).length}
+                    </div>
+                </div>
+            </div>
+
             <div className="mb-6">
                 <div className="flex gap-4">
                     <div className="flex-1">
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Search devices..."
+                                placeholder="Search devices by name or label..."
                                 className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                                 value={searchTerm}
                                 onChange={handleSearch}
@@ -428,7 +490,7 @@ function Device() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
-                            {devices.map((device) => (
+                            {filteredDevices.map((device) => (
                                 <tr key={device.id.id} className="hover:bg-gray-50">
                                     <td className="whitespace-nowrap px-6 py-4">
                                         <div className="text-sm font-medium text-gray-900">{device.name}</div>
