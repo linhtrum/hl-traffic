@@ -8,6 +8,8 @@ import Devices from './pages/Devices'
 import DeviceDetail from './pages/DeviceDetail'
 import Account from './pages/Account'
 import Layout from './components/Layout'
+import Customer from './pages/Customer'
+import CustomerUsers from './pages/CustomerUsers'
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -46,6 +48,8 @@ function App() {
             <Route path="devices" element={<Devices />} />
             <Route path="devices/:deviceId" element={<DeviceDetail />} />
             <Route path="account" element={<Account />} />
+            <Route path="customers" element={<Customer />} />
+            <Route path="customers/:customerId/users" element={<CustomerUsers />} />
           </Route>
         </Routes>
       </Router>

@@ -3,7 +3,7 @@ import { getToken, removeTokens } from "./auth";
 
 // Create axios instance with custom config
 const axiosClient = axios.create({
-  baseURL: "https://manage.tthd.vn", // Base URL for all requests
+  baseURL: "https://mqtt.hl-traffic.com", // Base URL for all requests
   headers: {
     "Content-Type": "application/json",
   },
@@ -63,10 +63,58 @@ export const authApi = {
   // Add other auth-related API calls here
 };
 
+// Customer-related API calls
+export const customerApi = {
+  getCustomers: async (params) => {
+    return axiosClient.get("/api/customers", { params });
+  },
+  createCustomer: async (customerData) => {
+    return axiosClient.post("/api/customer", customerData);
+  },
+  deleteCustomer: async (customerId) => {
+    return axiosClient.delete(`/api/customer/${customerId}`);
+  },
+  getCustomerUsers: async (customerId, params) => {
+    return axiosClient.get(`/api/customer/${customerId}/users`, { params });
+  },
+  createUser: async (userData) => {
+    return axiosClient.post("/api/user?sendActivationMail=false", userData);
+  },
+  updateUser: async (userData) => {
+    return axiosClient.post("/api/user", userData);
+  },
+  deleteUser: async (userId) => {
+    return axiosClient.delete(`/api/user/${userId}`);
+  },
+  getUserToken: async (userId) => {
+    return axiosClient.get(`/api/user/${userId}/token`);
+  },
+  activateUser: async (activateToken, password) => {
+    return axiosClient.post("/api/noauth/activate?sendActivationMail=true", {
+      activateToken,
+      password,
+    });
+  },
+  getUserActivationLink: async (userId) => {
+    return axiosClient.get(`/api/user/${userId}/activationLinkInfo`);
+  },
+  assignDeviceToCustomer: async (customerId, deviceId) => {
+    return axiosClient.post(`/api/customer/${customerId}/device/${deviceId}`);
+  },
+  unassignDevice: async (deviceId) => {
+    return axiosClient.delete(`/api/customer/device/${deviceId}`);
+  },
+};
+
 // Device-related API calls
 export const deviceApi = {
   getTenantDevices: async (params) => {
     return axiosClient.get("/api/tenant/deviceInfos", { params });
+  },
+  getCustomerDevices: async (customerId, params) => {
+    return axiosClient.get(`/api/customer/${customerId}/deviceInfos`, {
+      params,
+    });
   },
   getDefaultProfile: async () => {
     return axiosClient.get("/api/deviceProfileInfo/default");

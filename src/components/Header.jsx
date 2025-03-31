@@ -8,6 +8,7 @@ function Header() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
     const location = useLocation();
+    const isTenantAdmin = user?.scopes?.includes('TENANT_ADMIN');
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -25,6 +26,10 @@ function Header() {
     const handleLogout = () => {
         logout();
         setIsDropdownOpen(false);
+    };
+
+    const isActive = (path) => {
+        return location.pathname === path;
     };
 
     return (
@@ -67,6 +72,20 @@ function Header() {
                             </svg>
                             Devices
                         </Link>
+                        {isTenantAdmin && (
+                            <Link
+                                to="/customers"
+                                className={`flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${location.pathname === '/customers'
+                                    ? 'bg-gray-100 text-gray-900'
+                                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    }`}
+                            >
+                                <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Customers
+                            </Link>
+                        )}
                     </nav>
                 </div>
 

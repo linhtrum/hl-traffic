@@ -2,22 +2,42 @@ import { useState, useEffect } from 'react';
 import { deviceApi } from '../utils/axiosClient';
 import Sidebar from '../components/Sidebar';
 import Device from '../components/Device';
+import { useAuthContext } from '../context/AuthContext';
 
 function Home() {
     const [devices, setDevices] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+    const { user } = useAuthContext();
 
     useEffect(() => {
         const fetchDevices = async () => {
             try {
-                const response = await deviceApi.getTenantDevices({
-                    pageSize: 100,
-                    page: 0,
-                    sortProperty: 'name',
-                    sortOrder: 'ASC'
-                });
+                setLoading(true);
+                let response;
+
+                // Check user scope and fetch devices accordingly
+                if (user?.scopes?.includes('CUSTOMER_USER')) {
+                    // Fetch devices for customer user
+                    response = await deviceApi.getCustomerDevices(user.customerId, {
+                        pageSize: 100,
+                        page: 0,
+                        sortProperty: 'name',
+                        sortOrder: 'ASC'
+                    });
+                } else if (user?.scopes?.includes('TENANT_ADMIN')) {
+                    // Fetch devices for tenant admin
+                    response = await deviceApi.getTenantDevices({
+                        pageSize: 100,
+                        page: 0,
+                        sortProperty: 'name',
+                        sortOrder: 'ASC'
+                    });
+                } else {
+                    throw new Error('Unauthorized: Invalid user scope');
+                }
+
                 setDevices(response.data.data);
                 // Auto-select the first device if available
                 if (response.data.data.length > 0) {
@@ -31,12 +51,22 @@ function Home() {
             }
         };
 
-        fetchDevices();
-    }, []);
+        if (user) {
+            fetchDevices();
+        }
+    }, [user]); // Re-run when user changes
 
     const handleDeviceSelect = (device) => {
         setSelectedDeviceId(device.id.id);
     };
+
+    if (!user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen">

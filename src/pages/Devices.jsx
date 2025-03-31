@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { deviceApi } from '../utils/axiosClient';
+import { deviceApi, customerApi } from '../utils/axiosClient';
 import AddDeviceModal from '../components/AddDeviceModal';
 import DeviceDetailsModal from '../components/DeviceDetailsModal';
+import AssignDeviceModal from '../components/AssignDeviceModal';
 import { useSearchParams } from 'react-router-dom';
+import { useAuthContext } from '../context/AuthContext';
 
 function Device() {
     const [devices, setDevices] = useState([]);
@@ -36,6 +38,11 @@ function Device() {
     });
     const [defaultProfile, setDefaultProfile] = useState(null);
     const [searchParams, setSearchParams] = useSearchParams();
+    const { user } = useAuthContext();
+    const isCustomerUser = user?.scopes?.includes('CUSTOMER_USER');
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [isAssigning, setIsAssigning] = useState(false);
+    const [assignError, setAssignError] = useState(null);
 
     // Get pagination params from URL
     const page = parseInt(searchParams.get('page') || '0');
@@ -79,7 +86,14 @@ function Device() {
                 sortProperty,
                 sortOrder
             };
-            const response = await deviceApi.getTenantDevices(params);
+
+            let response;
+            if (isCustomerUser) {
+                response = await deviceApi.getCustomerDevices(user.customerId, params);
+            } else {
+                response = await deviceApi.getTenantDevices(params);
+            }
+
             setDevices(response.data.data);
             setTotalElements(response.data.totalElements);
             setHasNext(response.data.hasNext);
@@ -349,6 +363,45 @@ function Device() {
         }
     };
 
+    const handleAssignDevice = (device) => {
+        setSelectedDevice(device);
+        setIsAssignModalOpen(true);
+    };
+
+    const handleUnassignDevice = async (deviceId) => {
+        if (!window.confirm('Are you sure you want to unassign this device?')) {
+            return;
+        }
+
+        try {
+            setIsAssigning(true);
+            setAssignError(null);
+            await customerApi.unassignDevice(deviceId);
+            setSuccessMessage('Device unassigned successfully');
+            fetchDevices();
+        } catch (err) {
+            setAssignError(err.response?.data?.message || 'Failed to unassign device');
+        } finally {
+            setIsAssigning(false);
+        }
+    };
+
+    const handleAssignSubmit = async (customerId) => {
+        try {
+            setIsAssigning(true);
+            setAssignError(null);
+            await customerApi.assignDeviceToCustomer(customerId, selectedDevice.id.id);
+            setIsAssignModalOpen(false);
+            setSelectedDevice(null);
+            setSuccessMessage('Device assigned successfully');
+            fetchDevices();
+        } catch (err) {
+            setAssignError(err.response?.data?.message || 'Failed to assign device');
+        } finally {
+            setIsAssigning(false);
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex min-h-[400px] items-center justify-center">
@@ -375,6 +428,11 @@ function Device() {
             {error && (
                 <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
                     {error}
+                </div>
+            )}
+            {assignError && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+                    {assignError}
                 </div>
             )}
             <header className="mb-8">
@@ -440,41 +498,45 @@ function Device() {
                             </div>
                         </div>
                     </div>
-                    <button
-                        onClick={handleAddDevice}
-                        className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    >
-                        <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Device
-                    </button>
+                    {!isCustomerUser && (
+                        <button
+                            onClick={handleAddDevice}
+                            className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                            <svg className="mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Device
+                        </button>
+                    )}
                 </div>
             </div>
 
             <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                 <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
                     <h2 className="text-lg font-medium text-gray-900">Devices List</h2>
-                    <div className="flex gap-2">
-                        <select
-                            value={sortProperty}
-                            onChange={(e) => handleSortChange(e.target.value, sortOrder)}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        >
-                            <option value="name">Name</option>
-                            <option value="type">Type</option>
-                            <option value="createdTime">Created Time</option>
-                            <option value="active">Status</option>
-                        </select>
-                        <select
-                            value={sortOrder}
-                            onChange={(e) => handleSortChange(sortProperty, e.target.value)}
-                            className="rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        >
-                            <option value="ASC">Ascending</option>
-                            <option value="DESC">Descending</option>
-                        </select>
-                    </div>
+                    {!isCustomerUser && (
+                        <div className="flex gap-2">
+                            <select
+                                value={sortProperty}
+                                onChange={(e) => handleSortChange(e.target.value, sortOrder)}
+                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            >
+                                <option value="name">Name</option>
+                                <option value="type">Type</option>
+                                <option value="createdTime">Created Time</option>
+                                <option value="active">Status</option>
+                            </select>
+                            <select
+                                value={sortOrder}
+                                onChange={(e) => handleSortChange(sortProperty, e.target.value)}
+                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                            >
+                                <option value="ASC">Ascending</option>
+                                <option value="DESC">Descending</option>
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">
@@ -486,7 +548,9 @@ function Device() {
                                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Label</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created Time</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                                {!isCustomerUser && (
+                                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                                )}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
@@ -512,22 +576,43 @@ function Device() {
                                     <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
                                         {new Date(device.createdTime).toLocaleString()}
                                     </td>
-                                    <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => handleEditDevice(device)}
-                                                className="rounded-lg p-1 text-green-600 transition-colors hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500/20"
-                                            >
-                                                Edit
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteDevice(device.id.id)}
-                                                className="rounded-lg p-1 text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </td>
+                                    {!isCustomerUser && (
+                                        <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleEditDevice(device)}
+                                                    className="rounded-lg p-1 text-green-600 transition-colors hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-green-500/20"
+                                                >
+                                                    Edit
+                                                </button>
+                                                {device.customerTitle !== null ? (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleUnassignDevice(device.id.id) }}
+                                                        disabled={isAssigning}
+                                                        className="rounded-lg p-1 text-orange-600 transition-colors hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        title="Unassign device from customer"
+                                                    >
+                                                        Unassign
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleAssignDevice(device) }}
+                                                        disabled={isAssigning}
+                                                        className="rounded-lg p-1 text-blue-600 transition-colors hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        title="Assign device to customer"
+                                                    >
+                                                        Assign
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => handleDeleteDevice(device.id.id)}
+                                                    className="rounded-lg p-1 text-red-600 transition-colors hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -557,33 +642,48 @@ function Device() {
                 </div>
             </div>
 
-            <AddDeviceModal
-                isOpen={showAddModal}
-                onClose={handleCloseAddModal}
-                onSubmit={handleSubmit}
-                device={newDevice}
-                onChange={handleInputChange}
-                defaultProfile={defaultProfile}
-                error={error}
-            />
+            {!isCustomerUser && (
+                <>
+                    <AddDeviceModal
+                        isOpen={showAddModal}
+                        onClose={handleCloseAddModal}
+                        onSubmit={handleSubmit}
+                        device={newDevice}
+                        onChange={handleInputChange}
+                        defaultProfile={defaultProfile}
+                        error={error}
+                    />
 
-            <AddDeviceModal
-                isOpen={showEditModal}
-                onClose={handleCloseEditModal}
-                onSubmit={handleUpdateDevice}
-                device={editingDevice}
-                onChange={handleInputChange}
-                defaultProfile={defaultProfile}
-                error={error}
-                isUpdating={isUpdating}
-            />
+                    <AddDeviceModal
+                        isOpen={showEditModal}
+                        onClose={handleCloseEditModal}
+                        onSubmit={handleUpdateDevice}
+                        device={editingDevice}
+                        onChange={handleInputChange}
+                        defaultProfile={defaultProfile}
+                        error={error}
+                        isUpdating={isUpdating}
+                    />
 
-            <DeviceDetailsModal
-                isOpen={!!selectedDevice}
-                onClose={() => setSelectedDevice(null)}
-                device={selectedDevice}
-                onEdit={handleEditDevice}
-            />
+                    {/* <DeviceDetailsModal
+                        isOpen={!!selectedDevice}
+                        onClose={() => setSelectedDevice(null)}
+                        device={selectedDevice}
+                        onEdit={handleEditDevice}
+                    /> */}
+
+                    <AssignDeviceModal
+                        isOpen={isAssignModalOpen}
+                        onClose={() => {
+                            setIsAssignModalOpen(false);
+                            setSelectedDevice(null);
+                        }}
+                        onSubmit={handleAssignSubmit}
+                        error={assignError}
+                        isSubmitting={isAssigning}
+                    />
+                </>
+            )}
         </div>
     );
 }

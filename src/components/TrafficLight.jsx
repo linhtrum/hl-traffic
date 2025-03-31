@@ -16,6 +16,8 @@ function TrafficLight({ phase, value, isActive, size = 80 }) {
         border: '#D1D5DB' // gray-300
     };
 
+    // console.log(phase, value);
+
     return (
         <svg
             width={width}
@@ -66,7 +68,8 @@ function TrafficLight({ phase, value, isActive, size = 80 }) {
             />
 
             {/* Value Text (only show for Red and Green) */}
-            {phase !== 'Yellow' && value > 0 && (
+            {phase !== 'Yellow' && isActive && (
+                // {phase === 'Red' ? lightSize / 2 + spacing : lightSize * 1.5 + spacing * 3}
                 <text
                     x={phase === 'Red' ? lightSize / 2 + spacing : lightSize * 1.5 + spacing * 3}
                     y={height / 2}

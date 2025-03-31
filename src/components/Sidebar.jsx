@@ -4,19 +4,61 @@ import { useState, useMemo } from 'react';
 function Sidebar({ devices = [], loading, error, onDeviceSelect, selectedDeviceId }) {
     const location = useLocation();
     const [searchTerm, setSearchTerm] = useState('');
+    const [expandedGroups, setExpandedGroups] = useState({});
 
-    // Use useMemo to compute filtered devices without state
-    const filteredDevices = useMemo(() => {
+    // Use useMemo to compute filtered and grouped devices
+    const groupedDevices = useMemo(() => {
         if (!searchTerm.trim()) {
-            return devices;
+            // Group devices by customer title
+            const groups = devices.reduce((acc, device) => {
+                const groupName = device.customerTitle || 'Unknown';
+                if (!acc[groupName]) {
+                    acc[groupName] = [];
+                }
+                acc[groupName].push(device);
+                return acc;
+            }, {});
+
+            // Convert to array and sort groups
+            return Object.entries(groups)
+                .sort(([a], [b]) => {
+                    if (a === 'Unknown') return 1;
+                    if (b === 'Unknown') return -1;
+                    return a.localeCompare(b);
+                });
         }
 
+        // When searching, filter devices first
         const searchLower = searchTerm.toLowerCase();
-        return devices.filter(device =>
+        const filtered = devices.filter(device =>
             device.name.toLowerCase().includes(searchLower) ||
             (device.label && device.label.toLowerCase().includes(searchLower))
         );
+
+        // Group filtered devices
+        const groups = filtered.reduce((acc, device) => {
+            const groupName = device.customerTitle || 'Unknown';
+            if (!acc[groupName]) {
+                acc[groupName] = [];
+            }
+            acc[groupName].push(device);
+            return acc;
+        }, {});
+
+        return Object.entries(groups)
+            .sort(([a], [b]) => {
+                if (a === 'Unknown') return 1;
+                if (b === 'Unknown') return -1;
+                return a.localeCompare(b);
+            });
     }, [searchTerm, devices]);
+
+    const toggleGroup = (groupName) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [groupName]: !prev[groupName]
+        }));
+    };
 
     // Only show sidebar on home page
     if (location.pathname !== '/') {
@@ -78,58 +120,79 @@ function Sidebar({ devices = [], loading, error, onDeviceSelect, selectedDeviceI
                     </div>
 
                     <div className="space-y-2">
-                        {filteredDevices.length === 0 ? (
+                        {groupedDevices.length === 0 ? (
                             <div className="text-center text-sm text-gray-500 py-4">
                                 No devices found
                             </div>
                         ) : (
-                            filteredDevices.map((device) => (
-                                <button
-                                    key={device.id.id}
-                                    onClick={() => onDeviceSelect(device)}
-                                    className={`w-full rounded-lg px-4 py-1.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${selectedDeviceId === device.id.id
-                                        ? 'bg-blue-50 border-2 border-blue-500 shadow-sm'
-                                        : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-sm'
-                                        }`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <div className={`font-medium ${selectedDeviceId === device.id.id
-                                                ? 'text-blue-700'
-                                                : 'text-gray-900'
-                                                }`}>
-                                                {device.label}
-                                            </div>
-                                            <div className={`text-sm ${selectedDeviceId === device.id.id
-                                                ? 'text-blue-600'
-                                                : 'text-gray-500'
-                                                }`}>
-                                                {device.name || 'No Label'}
-                                            </div>
+                            groupedDevices.map(([groupName, groupDevices]) => (
+                                <div key={groupName} className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <button
+                                        onClick={() => toggleGroup(groupName)}
+                                        className="w-full flex items-center justify-between px-4 py-2 bg-gray-50 hover:bg-gray-100 transition-colors"
+                                    >
+                                        <span className="font-medium text-gray-700">{groupName}</span>
+                                        <svg
+                                            className={`w-5 h-5 transform transition-transform ${expandedGroups[groupName] ? 'rotate-180' : ''}`}
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                        >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                    </button>
+                                    {expandedGroups[groupName] && (
+                                        <div className="p-2 space-y-1">
+                                            {groupDevices.map((device) => (
+                                                <button
+                                                    key={device.id.id}
+                                                    onClick={() => onDeviceSelect(device)}
+                                                    className={`w-full rounded-lg px-4 py-1.5 text-left transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${selectedDeviceId === device.id.id
+                                                        ? 'bg-blue-50 border-2 border-blue-500 shadow-sm'
+                                                        : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className={`font-medium ${selectedDeviceId === device.id.id
+                                                                ? 'text-blue-700'
+                                                                : 'text-gray-900'
+                                                                }`}>
+                                                                {device.label}
+                                                            </div>
+                                                            <div className={`text-sm ${selectedDeviceId === device.id.id
+                                                                ? 'text-blue-600'
+                                                                : 'text-gray-500'
+                                                                }`}>
+                                                                {device.name || 'No Label'}
+                                                            </div>
+                                                        </div>
+                                                        <div className={`${device.active ? 'text-green-600' : 'text-red-600'}`}>
+                                                            {device.active ? (
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-wifi w-5 h-5">
+                                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                                    <path d="M12 18l.01 0" />
+                                                                    <path d="M9.172 15.172a4 4 0 0 1 5.656 0" />
+                                                                    <path d="M6.343 12.343a8 8 0 0 1 11.314 0" />
+                                                                    <path d="M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0" />
+                                                                </svg>
+                                                            ) : (
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-wifi-off w-5 h-5">
+                                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+                                                                    <path d="M12 18l.01 0" />
+                                                                    <path d="M9.172 15.172a4 4 0 0 1 5.656 0" />
+                                                                    <path d="M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2" />
+                                                                    <path d="M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374" />
+                                                                    <path d="M3 3l18 18" />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
                                         </div>
-                                        <div className={`${device.active ? 'text-green-600' : 'text-red-600'}`}>
-                                            {device.active ? (
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-wifi w-5 h-5">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M12 18l.01 0" />
-                                                    <path d="M9.172 15.172a4 4 0 0 1 5.656 0" />
-                                                    <path d="M6.343 12.343a8 8 0 0 1 11.314 0" />
-                                                    <path d="M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0" />
-                                                </svg>
-                                            ) : (
-
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="icon icon-tabler icons-tabler-outline icon-tabler-wifi-off w-5 h-5">
-                                                    <path stroke="none" d="M0 0h24v24H0z" fill="none" />
-                                                    <path d="M12 18l.01 0" />
-                                                    <path d="M9.172 15.172a4 4 0 0 1 5.656 0" />
-                                                    <path d="M6.343 12.343a7.963 7.963 0 0 1 3.864 -2.14m4.163 .155a7.965 7.965 0 0 1 3.287 2" />
-                                                    <path d="M3.515 9.515a12 12 0 0 1 3.544 -2.455m3.101 -.92a12 12 0 0 1 10.325 3.374" />
-                                                    <path d="M3 3l18 18" />
-                                                </svg>
-                                            )}
-                                        </div>
-                                    </div>
-                                </button>
+                                    )}
+                                </div>
                             ))
                         )}
                     </div>

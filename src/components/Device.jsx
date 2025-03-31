@@ -8,6 +8,7 @@ import ModeSelectModal from './ModeSelectModal';
 import SetTimeModal from './SetTimeModal';
 import SetLocationModal from './SetLocationModal';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useAuthContext } from '../context/AuthContext';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -37,6 +38,8 @@ function MapController({ location }) {
 }
 
 function Device({ deviceId }) {
+    const { user } = useAuthContext();
+    const isCustomerUser = user?.scopes?.includes('CUSTOMER_USER');
     const [device, setDevice] = useState(null);
     const [telemetry, setTelemetry] = useState(null);
     const [serverAttributes, setServerAttributes] = useState([]);
@@ -54,7 +57,6 @@ function Device({ deviceId }) {
     const [deviceTime, setDeviceTime] = useState(null);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [deviceLocation, setDeviceLocation] = useState(null);
-    const [subscriptionId, setSubscriptionId] = useState(null);
 
     // Get values from shared attributes
     const getSharedAttributeValue = (key) => {
@@ -113,7 +115,6 @@ function Device({ deviceId }) {
 
         fetchDevice();
     }, [deviceId]);
-    // console.log(deviceLocation);
 
     useEffect(() => {
         const fetchAttributes = async () => {
@@ -195,12 +196,72 @@ function Device({ deviceId }) {
                             Second: data.data.Second?.[0]?.[1]
                         };
                         setDeviceTime(timeData);
+
+                        // Extract Plan, Plan Total, Program, and Mode data
+                        const sharedData = {
+                            Plan: data.data.Plan?.[0]?.[1] || 'N/A',
+                            Plan_total: data.data.Plan_total?.[0]?.[1] || 'N/A',
+                            Program: data.data.Program?.[0]?.[1] || 'N/A',
+                            Mode: data.data.Mode?.[0]?.[1] || 'N/A'
+                        };
+
+                        // Update shared attributes with new data
+                        setSharedAttributes(prevAttributes => {
+                            const updatedAttributes = [...prevAttributes];
+                            Object.entries(sharedData).forEach(([key, value]) => {
+                                const existingIndex = updatedAttributes.findIndex(attr => attr.key === key);
+                                if (existingIndex !== -1) {
+                                    updatedAttributes[existingIndex] = {
+                                        ...updatedAttributes[existingIndex],
+                                        value: value,
+                                        lastUpdateTs: Date.now()
+                                    };
+                                } else {
+                                    updatedAttributes.push({
+                                        key,
+                                        value,
+                                        lastUpdateTs: Date.now()
+                                    });
+                                }
+                            });
+                            return updatedAttributes;
+                        });
+
+                        // Extract plans data from telemetry
+                        const plansData = [];
+                        for (let i = 1; i <= 6; i++) {
+                            const planData = {
+                                planNumber: i,
+                                hour: parseInt(data.data[`P${i}_HH`]?.[0]?.[1]) || 0,
+                                minute: parseInt(data.data[`P${i}_mm`]?.[0]?.[1]) || 0,
+                                programNumber: parseInt(data.data[`P${i}_Pr`]?.[0]?.[1]) || 1,
+                                enabled: parseInt(data.data[`P${i}_ENT`]?.[0]?.[1]) === 1
+                            };
+                            plansData.push(planData);
+                        }
+                        setPlans(plansData);
+
+                        // Extract programs data from telemetry
+                        const programsData = [];
+                        for (let i = 1; i <= 6; i++) {
+                            const programData = {
+                                programNumber: i,
+                                greenPhase1: parseInt(data.data[`Pr${i}_X1`]?.[0]?.[1]) || 0,
+                                greenPhase2: parseInt(data.data[`Pr${i}_X2`]?.[0]?.[1]) || 0,
+                                greenPhase3: parseInt(data.data[`Pr${i}_X3`]?.[0]?.[1]) || 0,
+                                startPhase1: parseInt(data.data[`Start_Pr${i}_X1`]?.[0]?.[1]) || 0,
+                                startPhase2: parseInt(data.data[`Start_Pr${i}_X2`]?.[0]?.[1]) || 0,
+                                startPhase3: parseInt(data.data[`Start_Pr${i}_X3`]?.[0]?.[1]) || 0,
+                                totalPeriod: parseInt(data.data[`Period_Pr${i}`]?.[0]?.[1]) || 0
+                            };
+                            programsData.push(programData);
+                        }
+                        setPrograms(programsData);
                     }
                 });
 
                 if (subId) {
                     currentSubscriptionId = subId;
-                    setSubscriptionId(subId);
                 }
             } catch (error) {
                 console.error('Error setting up WebSocket subscription:', error);
@@ -336,45 +397,50 @@ function Device({ deviceId }) {
             <div className="relative">
                 <TrafficLight
                     phase={telemetry?.data?.[`T_D${phaseNumber}`]?.[0]?.[1] > 0 ? 'Red' :
-                        telemetry?.data?.[`T_V${phaseNumber}`]?.[0]?.[1] > 0 ? 'Yellow' : 'Green'}
-                    value={telemetry?.data?.[`T_D${phaseNumber}`]?.[0]?.[1] ||
-                        telemetry?.data?.[`T_X${phaseNumber}`]?.[0]?.[1] || 0}
+                        telemetry?.data?.[`T_V${phaseNumber}`]?.[0]?.[1] > 0 ? 'Yellow' : telemetry?.data?.[`T_X${phaseNumber}`]?.[0]?.[1] > 0 ? 'Green' : ''}
+                    value={parseInt(telemetry?.data?.[`T_D${phaseNumber}`]?.[0]?.[1]) ||
+                        parseInt(telemetry?.data?.[`T_V${phaseNumber}`]?.[0]?.[1]) ||
+                        parseInt(telemetry?.data?.[`T_X${phaseNumber}`]?.[0]?.[1]) || ''}
                     isActive={true}
-                    size={60}
+                    size={!isCustomerUser ? 60 : 100}
                 />
             </div>
             <div className="mb-2 text-lg font-semibold">Phase {phaseNumber}</div>
         </div>
     );
 
-    const PlanConfigSection = () => (
-        <section className="w-1/4 rounded-lg bg-white p-4 shadow-sm">
-            <h2 className="mb-4 text-center text-lg font-bold text-red-600">PLAN CONFIG</h2>
-            <div className="space-y-2">
-                {[1, 2, 3, 4, 5, 6].map((num) => (
+    const PlanConfigSection = () => {
+        if (isCustomerUser) return null;
+
+        return (
+            <section className="w-1/4 rounded-lg bg-white p-4 shadow-sm">
+                <h2 className="mb-4 text-center text-lg font-bold text-red-600">PLAN CONFIG</h2>
+                <div className="space-y-2">
+                    {[1, 2, 3, 4, 5, 6].map((num) => (
+                        <button
+                            key={num}
+                            onClick={() => handlePlanClick(num)}
+                            className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        >
+                            Plan {num}
+                        </button>
+                    ))}
                     <button
-                        key={num}
-                        onClick={() => handlePlanClick(num)}
+                        onClick={() => handlePlanClick(0)}
                         className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
                     >
-                        Plan {num}
+                        Vàng, Đỏ+
                     </button>
-                ))}
-                <button
-                    onClick={() => handlePlanClick(0)}
-                    className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
-                >
-                    Vàng, Đỏ+
-                </button>
-                <button
-                    onClick={() => setShowModeModal(true)}
-                    className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
-                >
-                    Chọn chế độ
-                </button>
-            </div>
-        </section>
-    );
+                    <button
+                        onClick={() => setShowModeModal(true)}
+                        className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                    >
+                        Chọn chế độ
+                    </button>
+                </div>
+            </section>
+        );
+    };
 
     const TrafficLightSection = () => {
         const getModeText = (mode) => {
@@ -391,7 +457,7 @@ function Device({ deviceId }) {
         };
 
         return (
-            <section className="mx-4 flex w-1/2 flex-col rounded-lg bg-white p-4 shadow-sm">
+            <section className={`${isCustomerUser ? 'w-full' : 'mx-4 w-1/2'} flex flex-col rounded-lg bg-white p-4 shadow-sm`}>
                 <div className="mb-2 rounded-lg bg-gray-50 p-3">
                     <div className="grid grid-cols-4 gap-4">
                         <div className="text-center">
@@ -424,31 +490,37 @@ function Device({ deviceId }) {
         );
     };
 
-    const ProgramConfigSection = () => (
-        <section className="w-1/4 rounded-lg bg-white p-4 shadow-sm">
-            <h2 className="mb-4 text-center text-lg font-bold text-red-600">PROGRAM CONFIG</h2>
-            <div className="space-y-2">
-                {[1, 2, 3, 4, 5, 6].map((num) => (
+    const ProgramConfigSection = () => {
+        if (isCustomerUser) return null;
+
+        return (
+            <section className="w-1/4 rounded-lg bg-white p-4 shadow-sm">
+                <h2 className="mb-4 text-center text-lg font-bold text-red-600">PROGRAM CONFIG</h2>
+                <div className="space-y-2">
+                    {[1, 2, 3, 4, 5, 6].map((num) => (
+                        <button
+                            key={num}
+                            onClick={() => handleProgramClick(num)}
+                            className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        >
+                            Program {num}
+                        </button>
+                    ))}
                     <button
-                        key={num}
-                        onClick={() => handleProgramClick(num)}
                         className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
                     >
-                        Program {num}
+                        GPS Status
                     </button>
-                ))}
-                <button className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20">
-                    GPS Status
-                </button>
-                <button
-                    onClick={() => setShowTimeModal(true)}
-                    className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
-                >
-                    Set_RTC
-                </button>
-            </div>
-        </section>
-    );
+                    <button
+                        onClick={() => setShowTimeModal(true)}
+                        className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                    >
+                        Set_RTC
+                    </button>
+                </div>
+            </section>
+        );
+    };
 
     if (loading) {
         return (
@@ -490,7 +562,7 @@ function Device({ deviceId }) {
                 <section className="w-[50%] rounded-lg bg-white p-4 shadow-sm">
                     <div className="relative z-20 h-full w-full rounded-lg overflow-hidden">
                         <MapContainer
-                            center={[10.762622, 106.660172]} // Default center
+                            center={[10.762622, 106.660172]}
                             zoom={13}
                             style={{ height: '100%', width: '100%' }}
                         >
@@ -513,9 +585,9 @@ function Device({ deviceId }) {
 
                 {/* Control Panel */}
                 <div className="ml-4 flex w-[50%]">
-                    <PlanConfigSection />
+                    {!isCustomerUser && <PlanConfigSection />}
                     <TrafficLightSection />
-                    <ProgramConfigSection />
+                    {!isCustomerUser && <ProgramConfigSection />}
                 </div>
             </div>
 
@@ -544,17 +616,19 @@ function Device({ deviceId }) {
                                     <p className="text-sm text-gray-600">Label</p>
                                     <p className="font-medium">{device.label ? device.label : 'N/A'}</p>
                                 </div>
-                                <button
-                                    onClick={() => setShowLocationModal(true)}
-                                    className="mt-2 flex w-full items-center justify-center rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                                    title="Set device location"
-                                >
-                                    <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                    Set Location
-                                </button>
+                                {!isCustomerUser && (
+                                    <button
+                                        onClick={() => setShowLocationModal(true)}
+                                        className="mt-2 flex w-full items-center justify-center rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                                        title="Set device location"
+                                    >
+                                        <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                        Set Location
+                                    </button>
+                                )}
                             </div>
                         </div>
 
@@ -606,50 +680,55 @@ function Device({ deviceId }) {
                 </div>
             )}
 
-            <AddPlanModal
-                isOpen={showPlanModal}
-                onClose={() => {
-                    setShowPlanModal(false);
-                    setSelectedPlanNumber(null);
-                }}
-                onSubmit={handleAddPlan}
-                deviceId={deviceId}
-                planNumber={selectedPlanNumber}
-                initialData={plans.find(plan => plan.planNumber === selectedPlanNumber)}
-            />
+            {/* Only render modals if user is not a CUSTOMER_USER */}
+            {!isCustomerUser && (
+                <>
+                    <AddPlanModal
+                        isOpen={showPlanModal}
+                        onClose={() => {
+                            setShowPlanModal(false);
+                            setSelectedPlanNumber(null);
+                        }}
+                        onSubmit={handleAddPlan}
+                        deviceId={deviceId}
+                        planNumber={selectedPlanNumber}
+                        initialData={plans.find(plan => plan.planNumber === selectedPlanNumber)}
+                    />
 
-            <AddProgramModal
-                isOpen={showProgramModal}
-                onClose={() => {
-                    setShowProgramModal(false);
-                    setSelectedProgramNumber(null);
-                }}
-                onSubmit={handleAddProgram}
-                deviceId={deviceId}
-                programNumber={selectedProgramNumber}
-                initialData={programs.find(program => program.programNumber === selectedProgramNumber)}
-            />
+                    <AddProgramModal
+                        isOpen={showProgramModal}
+                        onClose={() => {
+                            setShowProgramModal(false);
+                            setSelectedProgramNumber(null);
+                        }}
+                        onSubmit={handleAddProgram}
+                        deviceId={deviceId}
+                        programNumber={selectedProgramNumber}
+                        initialData={programs.find(program => program.programNumber === selectedProgramNumber)}
+                    />
 
-            <ModeSelectModal
-                isOpen={showModeModal}
-                onClose={() => setShowModeModal(false)}
-                currentMode={getSharedAttributeValue('Mode')}
-                onModeSelect={handleModeSelect}
-            />
+                    <ModeSelectModal
+                        isOpen={showModeModal}
+                        onClose={() => setShowModeModal(false)}
+                        currentMode={getSharedAttributeValue('Mode')}
+                        onModeSelect={handleModeSelect}
+                    />
 
-            <SetTimeModal
-                isOpen={showTimeModal}
-                onClose={() => setShowTimeModal(false)}
-                onSubmit={handleSetTime}
-                deviceTime={deviceTime}
-            />
+                    <SetTimeModal
+                        isOpen={showTimeModal}
+                        onClose={() => setShowTimeModal(false)}
+                        onSubmit={handleSetTime}
+                        deviceTime={deviceTime}
+                    />
 
-            <SetLocationModal
-                isOpen={showLocationModal}
-                onClose={() => setShowLocationModal(false)}
-                onSubmit={handleSetLocation}
-                initialLocation={deviceLocation}
-            />
+                    <SetLocationModal
+                        isOpen={showLocationModal}
+                        onClose={() => setShowLocationModal(false)}
+                        onSubmit={handleSetLocation}
+                        initialLocation={deviceLocation}
+                    />
+                </>
+            )}
         </div>
     );
 }
