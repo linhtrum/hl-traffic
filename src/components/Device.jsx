@@ -414,26 +414,26 @@ function Device({ deviceId }) {
 
         return (
             <section className="w-1/4 rounded-lg bg-white p-4 shadow-sm">
-                <h2 className="mb-4 text-center text-lg font-bold text-red-600">PLAN CONFIG</h2>
+                <h2 className="mb-4 text-center text-lg font-bold">PLAN CONFIG</h2>
                 <div className="space-y-2">
                     {[1, 2, 3, 4, 5, 6].map((num) => (
                         <button
                             key={num}
                             onClick={() => handlePlanClick(num)}
-                            className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                            className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
                             Plan {num}
                         </button>
                     ))}
                     <button
                         onClick={() => handlePlanClick(0)}
-                        className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         Vàng, Đỏ+
                     </button>
                     <button
                         onClick={() => setShowModeModal(true)}
-                        className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         Chọn chế độ
                     </button>
@@ -495,25 +495,25 @@ function Device({ deviceId }) {
 
         return (
             <section className="w-1/4 rounded-lg bg-white p-4 shadow-sm">
-                <h2 className="mb-4 text-center text-lg font-bold text-red-600">PROGRAM CONFIG</h2>
+                <h2 className="mb-4 text-center text-lg font-bold">PROGRAM CONFIG</h2>
                 <div className="space-y-2">
                     {[1, 2, 3, 4, 5, 6].map((num) => (
                         <button
                             key={num}
                             onClick={() => handleProgramClick(num)}
-                            className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                            className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
                             Program {num}
                         </button>
                     ))}
                     <button
-                        className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         GPS Status
                     </button>
                     <button
                         onClick={() => setShowTimeModal(true)}
-                        className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
+                        className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         Set_RTC
                     </button>
