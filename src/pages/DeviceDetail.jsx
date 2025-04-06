@@ -14,6 +14,7 @@ import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import YellowRedConfigModal from '../components/YellowRedConfigModal';
 
 // Fix for default marker icons in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -42,6 +43,9 @@ function DeviceDetail() {
     const [deviceTime, setDeviceTime] = useState(null);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [deviceLocation, setDeviceLocation] = useState(null);
+    const [showYellowRedModal, setShowYellowRedModal] = useState(false);
+    const [isSubmittingYellowRed, setIsSubmittingYellowRed] = useState(false);
+    const [yellowRedError, setYellowRedError] = useState(null);
 
     // Get values from shared attributes
     const getSharedAttributeValue = (key) => {
@@ -100,7 +104,7 @@ function DeviceDetail() {
                     const planData = {
                         planNumber: i,
                         hour: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_HH`)?.value) || 0,
-                        minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_mm`)?.value) || 0,
+                        minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_MM`)?.value) || 0,
                         programNumber: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_Pr`)?.value) || 1,
                         enabled: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_ENT`)?.value) === 1
                     };
@@ -178,7 +182,7 @@ function DeviceDetail() {
                 const planData = {
                     planNumber: i,
                     hour: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_HH`)?.value) || 0,
-                    minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_mm`)?.value) || 0,
+                    minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_MM`)?.value) || 0,
                     programNumber: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_Pr`)?.value) || 1,
                     enabled: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_ENT`)?.value) === 1
                 };
@@ -280,6 +284,30 @@ function DeviceDetail() {
         }
     };
 
+    const handleYellowRedSubmit = async (data) => {
+        try {
+            setIsSubmittingYellowRed(true);
+            setYellowRedError(null);
+
+            // Convert string values to numbers
+            const attributes = {
+                Vang: parseInt(data.Vang),
+                Do_cong: parseInt(data.Do_cong)
+            };
+
+            await deviceApi.postSharedAttributes(deviceId, attributes);
+            setShowYellowRedModal(false);
+
+            // Fetch updated shared attributes
+            const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
+            setSharedAttributes(sharedResponse.data);
+        } catch (err) {
+            setYellowRedError(err.response?.data?.message || 'Failed to update yellow and red light times');
+        } finally {
+            setIsSubmittingYellowRed(false);
+        }
+    };
+
     const renderTrafficLightPhase = (phaseNumber) => (
         <div className="mb-8 flex items-center">
             <div className="min-w-[80px] text-lg font-semibold">Pha {phaseNumber}</div>
@@ -330,7 +358,7 @@ function DeviceDetail() {
                     </button>
                 ))}
                 <button
-                    onClick={() => handlePlanClick(0)}
+                    onClick={() => setShowYellowRedModal(true)}
                     className="w-full rounded bg-yellow-300 px-4 py-2 text-left transition-colors hover:bg-yellow-400 focus:outline-none focus:ring-2 focus:ring-yellow-500/20"
                 >
                     Vàng, Đỏ+
@@ -649,6 +677,14 @@ function DeviceDetail() {
                 onClose={() => setShowLocationModal(false)}
                 onSubmit={handleSetLocation}
                 initialLocation={deviceLocation}
+            />
+
+            <YellowRedConfigModal
+                isOpen={showYellowRedModal}
+                onClose={() => setShowYellowRedModal(false)}
+                onSubmit={handleYellowRedSubmit}
+                isSubmitting={isSubmittingYellowRed}
+                error={yellowRedError}
             />
         </div>
     );

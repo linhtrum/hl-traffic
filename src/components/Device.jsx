@@ -15,6 +15,9 @@ import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import TrafficLight from './TrafficLight';
+import YellowRedConfigModal from './YellowRedConfigModal';
+import ConfirmDialog from './ConfirmDialog';
+import PlanTotalModal from './PlanTotalModal';
 
 // Fix for default marker icons in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -57,6 +60,19 @@ function Device({ deviceId }) {
     const [deviceTime, setDeviceTime] = useState(null);
     const [showLocationModal, setShowLocationModal] = useState(false);
     const [deviceLocation, setDeviceLocation] = useState(null);
+    const [showYellowRedModal, setShowYellowRedModal] = useState(false);
+    const [isSubmittingYellowRed, setIsSubmittingYellowRed] = useState(false);
+    const [yellowRedError, setYellowRedError] = useState(null);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [confirmDialogConfig, setConfirmDialogConfig] = useState({
+        title: '',
+        message: '',
+        onConfirm: null,
+        data: null
+    });
+    const [showPlanTotalModal, setShowPlanTotalModal] = useState(false);
+    const [isSubmittingPlanTotal, setIsSubmittingPlanTotal] = useState(false);
+    const [planTotalError, setPlanTotalError] = useState(null);
 
     // Get values from shared attributes
     const getSharedAttributeValue = (key) => {
@@ -133,8 +149,8 @@ function Device({ deviceId }) {
                     const planData = {
                         planNumber: i,
                         hour: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_HH`)?.value) || 0,
-                        minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_mm`)?.value) || 0,
-                        programNumber: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_Pr`)?.value) || 1,
+                        minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_MM`)?.value) || 0,
+                        programNumber: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_Pr`)?.value) || 0,
                         enabled: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_ENT`)?.value) === 1
                     };
                     plansData.push(planData);
@@ -199,10 +215,10 @@ function Device({ deviceId }) {
 
                         // Extract Plan, Plan Total, Program, and Mode data
                         const sharedData = {
-                            Plan: data.data.Plan?.[0]?.[1] || 'N/A',
-                            Plan_total: data.data.Plan_total?.[0]?.[1] || 'N/A',
-                            Program: data.data.Program?.[0]?.[1] || 'N/A',
-                            Mode: data.data.Mode?.[0]?.[1] || 'N/A'
+                            Plan: parseInt(data.data.Plan?.[0]?.[1]) || 'N/A',
+                            Plan_total: parseInt(data.data.Plan_total?.[0]?.[1]) || 'N/A',
+                            Program: parseInt(data.data.Program?.[0]?.[1]) || 'N/A',
+                            Mode: parseInt(data.data.Mode?.[0]?.[1]) || 'N/A'
                         };
 
                         // Update shared attributes with new data
@@ -228,35 +244,35 @@ function Device({ deviceId }) {
                         });
 
                         // Extract plans data from telemetry
-                        const plansData = [];
-                        for (let i = 1; i <= 6; i++) {
-                            const planData = {
-                                planNumber: i,
-                                hour: parseInt(data.data[`P${i}_HH`]?.[0]?.[1]) || 0,
-                                minute: parseInt(data.data[`P${i}_mm`]?.[0]?.[1]) || 0,
-                                programNumber: parseInt(data.data[`P${i}_Pr`]?.[0]?.[1]) || 1,
-                                enabled: parseInt(data.data[`P${i}_ENT`]?.[0]?.[1]) === 1
-                            };
-                            plansData.push(planData);
-                        }
-                        setPlans(plansData);
+                        // const plansData = [];
+                        // for (let i = 1; i <= 6; i++) {
+                        //     const planData = {
+                        //         planNumber: i,
+                        //         hour: parseInt(data.data[`P${i}_HH`]?.[0]?.[1]) || 0,
+                        //         minute: parseInt(data.data[`P${i}_MM`]?.[0]?.[1]) || 0,
+                        //         programNumber: parseInt(data.data[`P${i}_Pr`]?.[0]?.[1]) || 0,
+                        //         enabled: parseInt(data.data[`P${i}_ENT`]?.[0]?.[1]) === 1
+                        //     };
+                        //     plansData.push(planData);
+                        // }
+                        // setPlans(plansData);
 
                         // Extract programs data from telemetry
-                        const programsData = [];
-                        for (let i = 1; i <= 6; i++) {
-                            const programData = {
-                                programNumber: i,
-                                greenPhase1: parseInt(data.data[`Pr${i}_X1`]?.[0]?.[1]) || 0,
-                                greenPhase2: parseInt(data.data[`Pr${i}_X2`]?.[0]?.[1]) || 0,
-                                greenPhase3: parseInt(data.data[`Pr${i}_X3`]?.[0]?.[1]) || 0,
-                                startPhase1: parseInt(data.data[`Start_Pr${i}_X1`]?.[0]?.[1]) || 0,
-                                startPhase2: parseInt(data.data[`Start_Pr${i}_X2`]?.[0]?.[1]) || 0,
-                                startPhase3: parseInt(data.data[`Start_Pr${i}_X3`]?.[0]?.[1]) || 0,
-                                totalPeriod: parseInt(data.data[`Period_Pr${i}`]?.[0]?.[1]) || 0
-                            };
-                            programsData.push(programData);
-                        }
-                        setPrograms(programsData);
+                        // const programsData = [];
+                        // for (let i = 1; i <= 6; i++) {
+                        //     const programData = {
+                        //         programNumber: i,
+                        //         greenPhase1: parseInt(data.data[`Pr${i}_X1`]?.[0]?.[1]) || 0,
+                        //         greenPhase2: parseInt(data.data[`Pr${i}_X2`]?.[0]?.[1]) || 0,
+                        //         greenPhase3: parseInt(data.data[`Pr${i}_X3`]?.[0]?.[1]) || 0,
+                        //         startPhase1: parseInt(data.data[`Start_Pr${i}_X1`]?.[0]?.[1]) || 0,
+                        //         startPhase2: parseInt(data.data[`Start_Pr${i}_X2`]?.[0]?.[1]) || 0,
+                        //         startPhase3: parseInt(data.data[`Start_Pr${i}_X3`]?.[0]?.[1]) || 0,
+                        //         totalPeriod: parseInt(data.data[`Period_Pr${i}`]?.[0]?.[1]) || 0
+                        //     };
+                        //     programsData.push(programData);
+                        // }
+                        // setPrograms(programsData);
                     }
                 });
 
@@ -279,36 +295,50 @@ function Device({ deviceId }) {
         };
     }, [deviceId]); // Only re-run if deviceId changes
 
+    // console.table(plans);
+    // console.table(sharedAttributes);
+
     const handlePlanClick = (planNumber) => {
         setSelectedPlanNumber(planNumber);
         setShowPlanModal(true);
     };
 
     const handleAddPlan = async (planData) => {
-        try {
-            await deviceApi.postSharedAttributes(deviceId, planData);
-            const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
-            setSharedAttributes(sharedResponse.data);
+        setConfirmDialogConfig({
+            title: 'Xác nhận cập nhật kế hoạch',
+            message: `Bạn có chắc chắn muốn cập nhật kế hoạch ${planData.number} không?`,
+            onConfirm: async () => {
+                try {
+                    await deviceApi.postSharedAttributes(deviceId, planData);
+                    const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
+                    setSharedAttributes(sharedResponse.data);
+                    // console.log(sharedResponse.data);
 
-            const plansData = [];
-            for (let i = 1; i <= 6; i++) {
-                const planData = {
-                    planNumber: i,
-                    hour: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_HH`)?.value) || 0,
-                    minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_mm`)?.value) || 0,
-                    programNumber: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_Pr`)?.value) || 1,
-                    enabled: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_ENT`)?.value) === 1
-                };
-                plansData.push(planData);
-            }
-            setPlans(plansData);
+                    const plansData = [];
+                    for (let i = 1; i <= 6; i++) {
+                        const planData = {
+                            planNumber: i,
+                            hour: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_HH`)?.value) || 0,
+                            minute: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_MM`)?.value) || 0,
+                            programNumber: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_Pr`)?.value) || 0,
+                            enabled: parseInt(sharedResponse.data.find(attr => attr.key === `P${i}_ENT`)?.value) === 1
+                        };
+                        plansData.push(planData);
+                    }
+                    setPlans(plansData);
+                    // console.log(plansData);
 
-            setShowPlanModal(false);
-            setSelectedPlanNumber(null);
-        } catch (err) {
-            console.error('Add plan error:', err);
-            setError('Failed to add plan');
-        }
+                    setShowPlanModal(false);
+                    setSelectedPlanNumber(null);
+                    setShowConfirmDialog(false);
+                } catch (err) {
+                    console.error('Add plan error:', err);
+                    setError('Failed to add plan');
+                }
+            },
+            data: planData
+        });
+        setShowConfirmDialog(true);
     };
 
     const handleProgramClick = (programNumber) => {
@@ -317,49 +347,113 @@ function Device({ deviceId }) {
     };
 
     const handleAddProgram = async (programData) => {
-        try {
-            await deviceApi.postSharedAttributes(deviceId, programData);
-            const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
-            setSharedAttributes(sharedResponse.data);
+        setConfirmDialogConfig({
+            title: 'Xác nhận cập nhật chương trình',
+            message: `Bạn có chắc chắn muốn cập nhật chương trình ${programData.programNumber} không?`,
+            onConfirm: async () => {
+                try {
+                    await deviceApi.postSharedAttributes(deviceId, programData);
+                    const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
+                    setSharedAttributes(sharedResponse.data);
 
-            const programsData = [];
-            for (let i = 1; i <= 6; i++) {
-                const programData = {
-                    programNumber: i,
-                    greenPhase1: parseInt(sharedResponse.data.find(attr => attr.key === `Pr${i}_X1`)?.value) || 0,
-                    greenPhase2: parseInt(sharedResponse.data.find(attr => attr.key === `Pr${i}_X2`)?.value) || 0,
-                    greenPhase3: parseInt(sharedResponse.data.find(attr => attr.key === `Pr${i}_X3`)?.value) || 0,
-                    startPhase1: parseInt(sharedResponse.data.find(attr => attr.key === `Start_Pr${i}_X1`)?.value) || 0,
-                    startPhase2: parseInt(sharedResponse.data.find(attr => attr.key === `Start_Pr${i}_X2`)?.value) || 0,
-                    startPhase3: parseInt(sharedResponse.data.find(attr => attr.key === `Start_Pr${i}_X3`)?.value) || 0,
-                    totalPeriod: parseInt(sharedResponse.data.find(attr => attr.key === `Period_Pr${i}`)?.value) || 0
-                };
-                programsData.push(programData);
-            }
-            setPrograms(programsData);
+                    const programsData = [];
+                    for (let i = 1; i <= 6; i++) {
+                        const programData = {
+                            programNumber: i,
+                            greenPhase1: parseInt(sharedResponse.data.find(attr => attr.key === `Pr${i}_X1`)?.value) || 0,
+                            greenPhase2: parseInt(sharedResponse.data.find(attr => attr.key === `Pr${i}_X2`)?.value) || 0,
+                            greenPhase3: parseInt(sharedResponse.data.find(attr => attr.key === `Pr${i}_X3`)?.value) || 0,
+                            startPhase1: parseInt(sharedResponse.data.find(attr => attr.key === `Start_Pr${i}_X1`)?.value) || 0,
+                            startPhase2: parseInt(sharedResponse.data.find(attr => attr.key === `Start_Pr${i}_X2`)?.value) || 0,
+                            startPhase3: parseInt(sharedResponse.data.find(attr => attr.key === `Start_Pr${i}_X3`)?.value) || 0,
+                            totalPeriod: parseInt(sharedResponse.data.find(attr => attr.key === `Period_Pr${i}`)?.value) || 0
+                        };
+                        programsData.push(programData);
+                    }
+                    setPrograms(programsData);
 
-            setShowProgramModal(false);
-            setSelectedProgramNumber(null);
-        } catch (err) {
-            setError('Failed to add program');
-            console.error('Add program error:', err);
-        }
+                    setShowProgramModal(false);
+                    setSelectedProgramNumber(null);
+                    setShowConfirmDialog(false);
+                } catch (err) {
+                    setError('Failed to add program');
+                    console.error('Add program error:', err);
+                }
+            },
+            data: programData
+        });
+        setShowConfirmDialog(true);
+    };
+
+    const handleYellowRedSubmit = async (data) => {
+        setConfirmDialogConfig({
+            title: 'Xác nhận cập nhật thời gian',
+            message: `Bạn có chắc chắn muốn cập nhật thời gian vàng (${data.Vang}s) và đỏ cộng (${data.Do_cong}s) không?`,
+            onConfirm: async () => {
+                try {
+                    setIsSubmittingYellowRed(true);
+                    setYellowRedError(null);
+
+                    // Convert string values to numbers
+                    const attributes = {
+                        Vang: parseInt(data.Vang),
+                        Do_cong: parseInt(data.Do_cong)
+                    };
+
+                    await deviceApi.postSharedAttributes(deviceId, attributes);
+                    setShowYellowRedModal(false);
+
+                    // Fetch updated shared attributes
+                    const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
+                    setSharedAttributes(sharedResponse.data);
+                    setShowConfirmDialog(false);
+                } catch (err) {
+                    setYellowRedError(err.response?.data?.message || 'Failed to update yellow and red light times');
+                } finally {
+                    setIsSubmittingYellowRed(false);
+                }
+            },
+            data: data
+        });
+        setShowConfirmDialog(true);
     };
 
     const handleModeSelect = async (modeValue) => {
-        try {
-            await deviceApi.postSharedAttributes(deviceId, {
-                Mode: modeValue
-            });
+        const getModeText = (mode) => {
+            switch (parseInt(mode)) {
+                case 0:
+                    return 'Nháy vàng';
+                case 1:
+                    return 'Tuyến 1';
+                case 2:
+                    return 'Tuyến 2';
+                default:
+                    return 'Tự động';
+            }
+        };
 
-            const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
-            setSharedAttributes(sharedResponse.data);
+        setConfirmDialogConfig({
+            title: 'Xác nhận thay đổi chế độ',
+            message: `Bạn có chắc chắn muốn chuyển sang chế độ "${getModeText(modeValue)}" không?`,
+            onConfirm: async () => {
+                try {
+                    await deviceApi.postSharedAttributes(deviceId, {
+                        Mode: modeValue
+                    });
 
-            setShowModeModal(false);
-        } catch (err) {
-            setError('Failed to update mode');
-            console.error('Update mode error:', err);
-        }
+                    const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
+                    setSharedAttributes(sharedResponse.data);
+
+                    setShowModeModal(false);
+                    setShowConfirmDialog(false);
+                } catch (err) {
+                    setError('Failed to update mode');
+                    console.error('Update mode error:', err);
+                }
+            },
+            data: modeValue
+        });
+        setShowConfirmDialog(true);
     };
 
     const handleSetTime = async (timestamp) => {
@@ -390,6 +484,33 @@ function Device({ deviceId }) {
             setError('Failed to set device location');
             console.error('Set location error:', err);
         }
+    };
+
+    const handlePlanTotalSubmit = async (data) => {
+        setConfirmDialogConfig({
+            title: 'Xác nhận cập nhật số lượng kế hoạch',
+            message: `Bạn có chắc chắn muốn cập nhật số lượng kế hoạch thành ${data.Plan_total} không?`,
+            onConfirm: async () => {
+                try {
+                    setIsSubmittingPlanTotal(true);
+                    setPlanTotalError(null);
+
+                    await deviceApi.postSharedAttributes(deviceId, data);
+                    setShowPlanTotalModal(false);
+
+                    // Fetch updated shared attributes
+                    const sharedResponse = await deviceApi.getSharedAttributes(deviceId);
+                    setSharedAttributes(sharedResponse.data);
+                    setShowConfirmDialog(false);
+                } catch (err) {
+                    setPlanTotalError(err.response?.data?.message || 'Failed to update plan total');
+                } finally {
+                    setIsSubmittingPlanTotal(false);
+                }
+            },
+            data: data
+        });
+        setShowConfirmDialog(true);
     };
 
     const renderTrafficLightPhase = (phaseNumber) => (
@@ -426,7 +547,13 @@ function Device({ deviceId }) {
                         </button>
                     ))}
                     <button
-                        onClick={() => handlePlanClick(0)}
+                        onClick={() => setShowPlanTotalModal(true)}
+                        className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                        Số lượng kế hoạch
+                    </button>
+                    <button
+                        onClick={() => setShowYellowRedModal(true)}
                         className="w-full rounded bg-blue-500 px-4 py-2 text-center text-white transition-colors hover:bg-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
                         Vàng, Đỏ+
@@ -726,6 +853,36 @@ function Device({ deviceId }) {
                         onClose={() => setShowLocationModal(false)}
                         onSubmit={handleSetLocation}
                         initialLocation={deviceLocation}
+                    />
+
+                    <YellowRedConfigModal
+                        isOpen={showYellowRedModal}
+                        onClose={() => setShowYellowRedModal(false)}
+                        onSubmit={handleYellowRedSubmit}
+                        isSubmitting={isSubmittingYellowRed}
+                        error={yellowRedError}
+                        initialValues={{
+                            Vang: getSharedAttributeValue('Vang'),
+                            Do_cong: getSharedAttributeValue('Do_cong')
+                        }}
+                    />
+
+                    <PlanTotalModal
+                        isOpen={showPlanTotalModal}
+                        onClose={() => setShowPlanTotalModal(false)}
+                        onSubmit={handlePlanTotalSubmit}
+                        isSubmitting={isSubmittingPlanTotal}
+                        error={planTotalError}
+                        initialValue={getSharedAttributeValue('Plan_total')}
+                    />
+
+                    <ConfirmDialog
+                        isOpen={showConfirmDialog}
+                        onClose={() => setShowConfirmDialog(false)}
+                        onConfirm={confirmDialogConfig.onConfirm}
+                        title={confirmDialogConfig.title}
+                        message={confirmDialogConfig.message}
+                        isSubmitting={false}
                     />
                 </>
             )}

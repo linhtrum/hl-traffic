@@ -5,7 +5,7 @@ function ModeSelectModal({ isOpen, onClose, currentMode, onModeSelect }) {
         { value: 0, label: 'Nháy vàng' },
         { value: 1, label: 'Tuyến 1' },
         { value: 2, label: 'Tuyến 2' },
-        { value: 3, label: 'Tự động' }
+        { value: 4, label: 'Tự động' }
     ];
 
     return (

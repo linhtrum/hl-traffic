@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 
 function AddPlanModal({ isOpen, onClose, onSubmit, planNumber, initialData }) {
     const [formData, setFormData] = useState({
+        number: planNumber,
         hour: 0,
         minute: 0,
-        programNumber: 1,
+        programNumber: 0,
         enabled: true
     });
 
@@ -13,29 +14,32 @@ function AddPlanModal({ isOpen, onClose, onSubmit, planNumber, initialData }) {
     useEffect(() => {
         if (initialData) {
             setFormData({
+                number: planNumber,
                 hour: initialData.hour || 0,
                 minute: initialData.minute || 0,
-                programNumber: initialData.programNumber || 1,
+                programNumber: initialData.programNumber || 0,
                 enabled: initialData.enabled ?? true
             });
         } else {
             // Reset to default values when initialData is undefined
             setFormData({
+                number: planNumber,
                 hour: 0,
                 minute: 0,
-                programNumber: 1,
+                programNumber: 0,
                 enabled: true
             });
         }
     }, [planNumber, initialData]);
 
-    // console.log(formData);
+    // console.table(formData);
 
     const handleSubmit = (e) => {
         e.preventDefault();
         const planData = {
+            number: formData.number,
             [`P${planNumber}_HH`]: parseInt(formData.hour),
-            [`P${planNumber}_mm`]: parseInt(formData.minute),
+            [`P${planNumber}_MM`]: parseInt(formData.minute),
             [`P${planNumber}_Pr`]: parseInt(formData.programNumber),
             [`P${planNumber}_ENT`]: formData.enabled ? 1 : 0
         };
@@ -83,7 +87,7 @@ function AddPlanModal({ isOpen, onClose, onSubmit, planNumber, initialData }) {
                         <div className="mt-1">
                             <input
                                 type="number"
-                                min="1"
+                                min="0"
                                 max="6"
                                 value={formData.programNumber}
                                 onChange={(e) => setFormData({ ...formData, programNumber: e.target.value })}
